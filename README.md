@@ -29,7 +29,7 @@ You can check if you have drops by visiting:
 Clone the repository:
 
 ```bash
-git clone https://github.com/YOURNAME/steam-card-farmer.git
+git clone https://github.com/StefanAngelovski/Steam-Idler.git
 cd steam-card-farmer
 ```
 Open farmer.js and replace "USERNAME HERE" with your Steam username and "PASSWORD HERE" with your Steam password.
