@@ -1,0 +1,20 @@
+{
+  "name": "steam-idler",
+  "version": "1.0.0",
+  "description": "Lightweight Steam trading card idler that scans badges and farms card drops for ARMv6l (Pi Zero W)",
+  "main": "farmer.js",
+  "scripts": {
+    "start": "node farmer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["steam", "cards", "farming", "idler", "raspberry pi zero w"],
+  "author": "Stefan Angelovski",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "cheerio": "^1.0.0-rc.12",
+    "steam-totp": "^2.1.2",
+    "steam-user": "^5.3.0",
+    "steamcommunity": "^3.49.0"
+  }
+}
