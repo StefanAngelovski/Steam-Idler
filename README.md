@@ -62,3 +62,17 @@ source ~/.bashrc
 node -v
 npm -v
 ```
+
+# Running in background headless
+```bash
+# Install tmux
+sudo apt install tmux
+
+# Creating a new terminal session (you only do this once per restart of your device)
+tmux new -t steam
+
+# Detaching from terminal session without closing it
+CTRL + B -> write :detach
+
+# Attaching to tmux session
+tmux attach -t steam
