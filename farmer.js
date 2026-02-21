@@ -4,11 +4,11 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const readline = require('readline');
 
-const username = 'ENTER USERNAME';
-const password = 'ENTER PASSWORD!';
+const USERNAME = 'ENTER USERNAME';
+const PASSWORD = 'ENTER PASSWORD!';
 
-const CHECK_INTERVAL = 20 * 60 * 1000; // 20 minutes
-const REQUEST_DELAY = 1500; // 1.5s between requests (avoid rate limit)
+const CHECK_INTERVAL = 20 * 60 * 1000;
+const REQUEST_DELAY = 2000;
 
 const client = new SteamUser();
 const community = new SteamCommunity();
@@ -22,8 +22,8 @@ function sleep(ms) {
 }
 
 client.logOn({
-    accountName: username,
-    password: password
+    accountName: USERNAME,
+    password: PASSWORD
 });
 
 client.on('steamGuard', (domain, callback) => {
@@ -54,63 +54,49 @@ client.on('webSession', async (sessionID, cookies) => {
 
 async function buildQueue() {
     console.log("Scanning badge page...\n");
-
     farmingQueue = [];
 
     try {
-        const badgePage = await axios.get(
-            "https://steamcommunity.com/my/badges",
-            { headers: { Cookie: cookiesGlobal } }
-        );
-
-        const $ = cheerio.load(badgePage.data);
-        const appids = [];
-
-        $('.badge_row_overlay').each((i, el) => {
-            const link = $(el).attr('href');
-            const match = link.match(/gamecards\/(\d+)/);
-            if (match) appids.push(parseInt(match[1]));
+        const res = await axios.get("https://steamcommunity.com/my/badges", {
+            headers: {
+                Cookie: cookiesGlobal,
+                "User-Agent": "Mozilla/5.0"
+            }
         });
 
-        console.log(`Found ${appids.length} badge entries\n`);
+        const $ = cheerio.load(res.data);
 
-        for (const appid of appids) {
+        $('.badge_row').each((i, row) => {
 
-            await sleep(REQUEST_DELAY);
+            const overlay = $(row).find('.badge_row_overlay').attr('href');
+            if (!overlay) return;
 
-            try {
-                const res = await axios.get(
-                    `https://steamcommunity.com/my/gamecards/${appid}`,
-                    { headers: { Cookie: cookiesGlobal } }
-                );
+            const match = overlay.match(/gamecards\/(\d+)/);
+            if (!match) return;
 
-                const $$ = cheerio.load(res.data);
-                const dropText = $$('.progress_info_bold').text();
+            const appid = parseInt(match[1]);
 
-                const match = dropText.match(/([0-9]+)\s+card drops remaining/);
+            const dropSpan = $(row).find('.progress_info_bold').first();
+            if (!dropSpan.length) return;
 
-                if (match) {
-                    const drops = parseInt(match[1]);
-                    const name = $$('.badge_title').first().text().trim();
+            const drops = parseInt(dropSpan.text().trim());
+            if (isNaN(drops) || drops <= 0) return;
 
-                    farmingQueue.push({
-                        appid,
-                        name,
-                        drops
-                    });
+            const name = $(row).find('.badge_title').text().trim();
 
-                    console.log(`${name} — ${drops} drops remaining`);
-                }
+            farmingQueue.push({
+                appid,
+                name,
+                drops
+            });
 
-            } catch (err) {
-                console.log(`Failed checking appid ${appid}`);
-            }
-        }
+            console.log(`${name} — ${drops} drops remaining`);
+        });
 
         console.log(`\nQueue built: ${farmingQueue.length} games ready to farm\n`);
 
     } catch (err) {
-        console.log("Failed to load badge page.");
+        console.log("Failed loading badge page:", err.message);
     }
 }
 
@@ -136,19 +122,12 @@ async function checkCurrentGame() {
 
     try {
         await sleep(REQUEST_DELAY);
+        await buildQueue();
 
-        const res = await axios.get(
-            `https://steamcommunity.com/my/gamecards/${currentGame.appid}`,
-            { headers: { Cookie: cookiesGlobal } }
-        );
+        const stillExists = farmingQueue.find(g => g.appid === currentGame.appid);
 
-        const $ = cheerio.load(res.data);
-        const dropText = $('.progress_info_bold').text();
-        const match = dropText.match(/([0-9]+)\s+card drops remaining/);
-
-        if (match) {
-            const drops = parseInt(match[1]);
-            console.log(`${currentGame.name} — ${drops} drops remaining`);
+        if (stillExists) {
+            console.log(`${currentGame.name} — ${stillExists.drops} drops remaining`);
             setTimeout(checkCurrentGame, CHECK_INTERVAL);
         } else {
             console.log(`${currentGame.name} finished.\n`);
